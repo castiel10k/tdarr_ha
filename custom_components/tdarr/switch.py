@@ -1,13 +1,6 @@
 from dataclasses import dataclass
 import logging
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Generic,
-    TypeVar,
-)
+from typing import Awaitable, Callable, Generic, TypeVar
 
 from homeassistant.core import callback
 from homeassistant.components.switch import (
@@ -32,8 +25,7 @@ TEntity = TypeVar('TEntity')
 class TdarrSwitchEntityDescription(SwitchEntityDescription, Generic[TEntity]): 
     """Details of a Tdarr switch entity""" 
  
-    value_fn: Callable[[dict], bool | None]
-    attributes_fn: Callable[[dict], Dict[str, Any] | None] | None = None
+    value_fn: Callable[[dict], bool | None] 
     update_fn: Callable[[TdarrApiClient, TEntity, bool], Awaitable]
 
 SERVER_ENTITY_DESCRIPTIONS = {
@@ -42,14 +34,14 @@ SERVER_ENTITY_DESCRIPTIONS = {
         translation_key="pause_all",
         icon="mdi:pause-circle",
         value_fn=lambda data: data.get("globalsettings", {}).get("pauseAllNodes"),
-        update_fn=lambda server, _, state: server.async_set_global_setting("pauseAll", state),
+        update_fn=lambda server, _, state: server.set_global_setting("pauseAll", state),
     ),
     TdarrSwitchEntityDescription[TdarrServerEntity](
         key="ignore_schedules",
         translation_key="ignore_schedules",
         icon="mdi:calendar-remove",
         value_fn=lambda data: data.get("globalsettings", {}).get("ignoreSchedules"),
-        update_fn=lambda server, _, state: server.async_set_global_setting("ignoreSchedules", state),
+        update_fn=lambda server, _, state: server.set_global_setting("ignoreSchedules", state),
     ),
 }
 
@@ -59,7 +51,7 @@ NODE_ENTITY_DESCRIPTIONS = {
         translation_key="node_paused",
         icon="mdi:pause-circle",
         value_fn=lambda data: data.get("nodePaused"),
-        update_fn=lambda server, entity, state: server.async_set_node_setting(entity.tdarr_node_id, "nodePaused", state),
+        update_fn=lambda server, entity, state: server.set_node_setting(entity.tdarr_node_id, "nodePaused", state),
     )
 }
 
@@ -85,22 +77,12 @@ class TdarrServerSwitch(TdarrServerEntity, SwitchEntity):
     """A Tdarr server level switch"""
 
     def __init__(self, coordinator: TdarrDataUpdateCoordinator, options, entity_description: TdarrSwitchEntityDescription):
-        _LOGGER.info("Creating server level %s switch entity", entity_description.key)
+        _LOGGER.info("Creating server level switch %s", entity_description.key)
         super().__init__(coordinator, entity_description)
 
     @property
     def description(self) -> TdarrSwitchEntityDescription:
         return self.entity_description
-    
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any] | None:
-        try:
-            attributes = self.base_attributes
-            if self.description.attributes_fn:
-                attributes = {**attributes, **self.description.attributes_fn(self.data)}
-            return attributes
-        except Exception as e:
-            raise ValueError(f"Unable to get attributes for {self.entity_description.key} switch entity") from e
 
     async def async_turn_on(self, **kwargs):
         return await self.async_set_state(True)
@@ -121,28 +103,18 @@ class TdarrServerSwitch(TdarrServerEntity, SwitchEntity):
             self._attr_is_on = self.description.value_fn(self.data)
             self.async_write_ha_state()
         except Exception as e:
-            raise ValueError(f"Unable to get value for {self.entity_description.key} switch entity") from e
+            raise ValueError(f"Unable to get value for {self.entity_description.key} switch") from e
 
 class TdarrNodeSwitch(TdarrNodeEntity, SwitchEntity):
     """A Tdarr node level switch"""
 
     def __init__(self, coordinator: TdarrDataUpdateCoordinator, node_key: str, options, entity_description: TdarrSwitchEntityDescription):
-        _LOGGER.info("Creating node %s level %s switch entity", node_key, entity_description.key)
+        _LOGGER.info("Creating node %s level switch %s", node_key, entity_description.key)
         super().__init__(coordinator, node_key, entity_description)
 
     @property
     def description(self) -> TdarrSwitchEntityDescription:
         return self.entity_description
-    
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any] | None:
-        try:
-            attributes = self.base_attributes
-            if self.description.attributes_fn:
-                attributes = {**attributes, **self.description.attributes_fn(self.data)}
-            return attributes
-        except Exception as e:
-            raise ValueError(f"Unable to get attributes for node '{self.node_key}' {self.entity_description.key} switch entity") from e
 
     async def async_turn_on(self, **kwargs):
         return await self.async_set_state(True)
@@ -163,5 +135,5 @@ class TdarrNodeSwitch(TdarrNodeEntity, SwitchEntity):
             self._attr_is_on = self.description.value_fn(self.data)
             self.async_write_ha_state()
         except Exception as e:
-            raise ValueError(f"Unable to get value for node '{self.node_key}' {self.entity_description.key} switch entity") from e
+            raise ValueError(f"Unable to get value for node '{self.node_key}' {self.entity_description.key} switch") from e
 

@@ -1,13 +1,6 @@
 from dataclasses import dataclass
 import logging
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Generic,
-    TypeVar,
-)
+from typing import Awaitable, Callable, Generic, TypeVar
 
 from homeassistant.components.number import (
     NumberEntity,
@@ -50,7 +43,7 @@ NODE_ENTITY_DESCRIPTIONS = {
         step=1,
         mode=NumberMode.BOX,
         value_fn=lambda data: data.get("workerLimits", {}).get("healthcheckcpu"),
-        update_fn=lambda api, entity, value: api.async_set_node_worker_limit(entity.node_key, "healthcheckcpu", int(value))
+        update_fn=lambda api, entity, value: api.set_node_worker_limit(entity.node_key, "healthcheckcpu", int(value))
     ),
     TdarrNumberEntityDescription[TdarrNodeEntity](
         key="worker_limit_healthcheck_gpu",
@@ -60,7 +53,7 @@ NODE_ENTITY_DESCRIPTIONS = {
         step=1,
         mode=NumberMode.BOX,
         value_fn=lambda data: data.get("workerLimits", {}).get("healthcheckgpu"),
-        update_fn=lambda api, entity, value: api.async_set_node_worker_limit(entity.node_key, "healthcheckgpu", int(value))
+        update_fn=lambda api, entity, value: api.set_node_worker_limit(entity.node_key, "healthcheckgpu", int(value))
     ),
     TdarrNumberEntityDescription[TdarrNodeEntity](
         key="worker_limit_transcode_cpu",
@@ -70,7 +63,7 @@ NODE_ENTITY_DESCRIPTIONS = {
         step=1,
         mode=NumberMode.BOX,
         value_fn=lambda data: data.get("workerLimits", {}).get("transcodecpu"),
-        update_fn=lambda api, entity, value: api.async_set_node_worker_limit(entity.node_key, "transcodecpu", int(value))
+        update_fn=lambda api, entity, value: api.set_node_worker_limit(entity.node_key, "transcodecpu", int(value))
     ),
     TdarrNumberEntityDescription[TdarrNodeEntity](
         key="worker_limit_transcode_gpu",
@@ -80,7 +73,7 @@ NODE_ENTITY_DESCRIPTIONS = {
         step=1,
         mode=NumberMode.BOX,
         value_fn=lambda data: data.get("workerLimits", {}).get("transcodegpu"),
-        update_fn=lambda api, entity, value: api.async_set_node_worker_limit(entity.node_key, "transcodegpu", int(value))
+        update_fn=lambda api, entity, value: api.set_node_worker_limit(entity.node_key, "transcodegpu", int(value))
     ),
 }
 
@@ -104,7 +97,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class TdarrServerNumberEntity(TdarrServerEntity, NumberEntity):
 
     def __init__(self, coordinator: TdarrDataUpdateCoordinator, options, entity_description: TdarrNumberEntityDescription):
-        _LOGGER.info("Creating server level %s number entity", entity_description.key)
+        _LOGGER.info("Creating server level number entity %s", entity_description.key)
         super().__init__(coordinator, entity_description)
 
     @property
@@ -119,12 +112,10 @@ class TdarrServerNumberEntity(TdarrServerEntity, NumberEntity):
             raise ValueError(f"Unable to get value for {self.entity_description.key} number entity") from e
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any] | None:
+    def extra_state_attributes(self):
         try:
-            attributes = self.base_attributes
             if self.description.attributes_fn:
-                attributes = {**attributes, **self.description.attributes_fn(self.data)}
-            return attributes
+                return self.description.attributes_fn(self.data)
         except Exception as e:
             raise ValueError(f"Unable to get attributes for {self.entity_description.key} number entity") from e
 
@@ -135,7 +126,7 @@ class TdarrServerNumberEntity(TdarrServerEntity, NumberEntity):
 class TdarrNodeNumberEntity(TdarrNodeEntity, NumberEntity):
 
     def __init__(self, coordinator: TdarrDataUpdateCoordinator, node_key: str, options, entity_description: TdarrNumberEntityDescription):
-        _LOGGER.info("Creating node %s level %s number entity", node_key, entity_description.key)
+        _LOGGER.info("Creating node %s level number entity %s", node_key, entity_description.key)
         super().__init__(coordinator, node_key, entity_description)
 
     @property
@@ -150,12 +141,10 @@ class TdarrNodeNumberEntity(TdarrNodeEntity, NumberEntity):
             raise ValueError(f"Unable to get value for node '{self.node_key}' {self.entity_description.key} number entity") from e
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any] | None:
+    def extra_state_attributes(self):
         try:
-            attributes = self.base_attributes
             if self.description.attributes_fn:
-                attributes = {**attributes, **self.description.attributes_fn(self.data)}
-            return attributes
+                return self.description.attributes_fn(self.data)
         except Exception as e:
             raise ValueError(f"Unable to get attributes for node '{self.node_key}' {self.entity_description.key} number entity") from e
 
