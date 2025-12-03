@@ -34,16 +34,21 @@ async def validate_input(hass: core.HomeAssistant, data):
     """
     api_client: TdarrApiClient = TdarrApiClient.from_config(hass, data)
 
-    result = await api_client.async_get_global_settings()
-    if result.get("status", "") == "ERROR":
-        if "Invalid API key" in result["message"]:
+    result = await api_client.get_global_settings()
+    
+    if result.get("status") == "ERROR":
+        message = result.get("message", "")
+        _LOGGER.error("API validation failed: %s", message)
+        
+        if "Invalid API key" in message or "invalid" in message.lower():
             raise InvalidAPIKEY
-        if "No auth token provided" in result["message"]:
+        if "No auth token provided" in message or "auth" in message.lower():
             raise AuthRequired
-        raise ConnectionError
-    if not result:
-        _LOGGER.error("Failed to connect to Tdarr Server")
-        raise ConnectionError
+        raise ConnectionError(f"API Error: {message}")
+        
+    if not result or not result.get("_id"):
+        _LOGGER.error("Failed to connect to Tdarr Server or invalid response")
+        raise ConnectionError("Failed to connect to Tdarr Server")
 
     # Return info that you want to store in the config entry.
     return {"title": f"Tdarr Server ({data[SERVERIP]})"}
