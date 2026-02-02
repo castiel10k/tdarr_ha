@@ -44,7 +44,7 @@ async def validate_input(hass: HomeAssistant, data):
     """
     api_client: TdarrApiClient = TdarrApiClient.from_config(hass, data)
 
-    result = await api_client.get_global_settings()
+    result = await api_client.async_get_global_settings()
     
     if result.get("status") == "ERROR":
         message = result.get("message", "")
